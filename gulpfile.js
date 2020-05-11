@@ -75,7 +75,7 @@ gulp.task('compress', function () {
 })
 // 图片压缩
 gulp.task('imagemin',function(){
-    return gulp.src(['./img/*','./img/*/*'])
+    return gulp.src(['./img/*.*','./img/*/*.*'])
     .pipe(imagemin())
     .pipe(gulp.dest('./dist/img'))
     .pipe(rev.manifest())
@@ -91,7 +91,7 @@ gulp.task('css',function(){
 })
 // js md5签名
 gulp.task('js',function(){
-    return gulp.src('./.tmp/js/*.js')
+    return gulp.src(['./.tmp/js/*.js','./.tmp/scripts/*.js'])
     .pipe(rev())
     .pipe(gulp.dest('./dist/js'))
     .pipe(rev.manifest())
