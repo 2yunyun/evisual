@@ -2,21 +2,22 @@
 'use strict';
 
 var gulp = require('gulp'),
-    connect = require('gulp-connect'),
-    browserSync = require('browser-sync').create(), //多浏览器多设备同步&自动刷新
-    SSI = require('browsersync-ssi'),
-    less = require('gulp-less'),
-    useref = require('gulp-useref'),
-    uglify = require('gulp-uglify'),
-    minifyCss = require('gulp-clean-css'),
-    gulpif = require('gulp-if'),
-    imagemin = require('gulp-imagemin'),
-    rev = require('gulp-rev'),
-    revCollect = require('gulp-rev-collector'),
-    clean = require('gulp-clean'),
-    gulpSequence = require('gulp-sequence');
-
-
+    browserSync = require('browser-sync').create(),
+    SSI = require('browsersync-ssi'),//多浏览器多设备同步&自动刷新
+    concat = require('gulp-concat'),//整合文件
+    autoprefixer = require('gulp-autoprefixer'),
+    base64 = require('gulp-base64'),
+    cssmin = require('gulp-minify-css'),
+    rename = require('gulp-rename'),
+    uglify = require('gulp-uglify'), //混淆js   暂时没用到
+    minify = require('gulp-minify'), //压缩js
+    plumber = require('gulp-plumber'),//错误处理插件plumber
+    compass = require('gulp-compass'),    //compass 用来编译sass
+    imagemin = require('gulp-imagemin'),//压缩图片
+    cache = require('gulp-cache'),
+    clean = require('gulp-clean'), //clean 用来删除文件
+    zip = require('gulp-zip'),//压缩文件
+    runSequence = require('gulp-run-sequence');//控制task中的串行和并行。这个很重要，它能够严格规定task的执行顺序，否则gulp默认并行，有些时候会产生问题。如先清空再重建文件，可能重建过程中又清空了。
 
 
 /*
@@ -27,111 +28,168 @@ var gulp = require('gulp'),
  * gulp.dest() gulp任务输出
  */
  
-/*
- * dev服务任务
- * 其他gulp-connect中的配置项说明：
- * root： 设置服务的启动根目录，当启动服务时，默认到此目录文件中找
- * livereload： 热加载（通过设置，当修改html，或css时，浏览器预览实时刷新效果）
- * port: 服务端口
- * host: 服务域名，默认为localhost,可以改为本机ip
-*/
-
 //创建一个名为serve的任务，该任务的内容就是匿名函数中的内容。
-gulp.task('serve', function() {
+gulp.task('serve', function () {
     //使用browserSync创建服务器，自动打开浏览器并打开./dist文件夹中的文件（默认为index.html）
-    browserSync.init({
+   return browserSync.init({
         server: {
-            baseDir:["./dist"],
-            middleware:SSI({
-                baseDir:'./dist',
-                ext:'.shtml',
-                version:'2.10.0'
+            baseDir: ["./dist"],
+            middleware: SSI({
+                baseDir: './dist',
+                ext: '.html',
+                version: '1.0.0'
             })
         }
     });
     //监听各个目录的文件，如果有变动则执行相应的任务操作文件
-    gulp.watch("**/*.css", ['compass']);
-    gulp.watch("**/*.js", ['js']);
+   
+    gulp.watch("./js/*.js", ['js']);
     gulp.watch("./*.html", ['html']);
+    gulp.watch(["./img/*.*","./img/**/*.*"], ['img']);
+    gulp.watch("./css/*.css", ['styles']);
+    // gulp.watch("./font/*", ['font'])
     //如果有任何文件变动，自动刷新浏览器
-    gulp.watch("dist/*.html").on("change",browserSync.reload);
+    gulp.watch("dist/*.html").on("change", browserSync.reload);
 });
 
 
-gulp.task('dev', function () {
-    connect.server({
-        port: 8060,
-        livereload: true
-    })
-})
+//通过gulp处理css的自动前缀
+//通过gulp将css中的图片转换成base64编码
+//通过gulp将css进行压缩
+gulp.task('styles', function() {
+    return gulp.src(['./css/*.css','!./css/*.min.css']) //源文件路径
+        //错误管理模块
+        .pipe(plumber())
+        .pipe(autoprefixer({
+            browsers: ['last 2 versions'],
+            cascade: false      // 是否美化
+        })) //自动前缀
+        .pipe(base64()) //base64编码
+        .pipe(cssmin()) //css压缩
+        .pipe(gulp.dest('dist/css')) //目的路径
+        //自动刷新浏览器
+        .pipe(browserSync.stream());
+});
 
-// css,js的压缩
-gulp.task('compress', function () {
-    return gulp.src('./*.html')
-    .pipe(useref())
-    .pipe(gulpif('*.js',uglify()))
-    .pipe(gulpif('*.css',minifyCss()))
-    .pipe(gulp.dest('./.tmp')) 
-})
-// 图片压缩
-gulp.task('imagemin',function(){
-    return gulp.src(['./img/*.*','./img/*/*.*'])
-    .pipe(imagemin())
-    .pipe(gulp.dest('./dist/img'))
-    .pipe(rev.manifest())
-    .pipe(gulp.dest('./.tmp/rev/img'))
-})
-// css md5签名
-gulp.task('css',function(){
-    return gulp.src('./.tmp/css/*.css')
-    .pipe(rev())  //给文件加md5签名后缀
-    .pipe(gulp.dest('./dist/css')) //签名后输出目录
-    .pipe(rev.manifest())  //设置md5签名文件的sourcemap 
-    .pipe(gulp.dest('./.tmp/rev/css')) //设置map文件存放目录
-})
-// js md5签名
-gulp.task('js',function(){
-    return gulp.src(['./.tmp/js/*.js','./.tmp/scripts/*.js'])
-    .pipe(rev())
-    .pipe(gulp.dest('./dist/js'))
-    .pipe(rev.manifest())
-    .pipe(gulp.dest('./.tmp/rev/js'))
-})
-// 路径替换
-gulp.task('rev',function(){
-    return gulp.src(['./.tmp/rev/**/*.json','./.tmp/*.html'])
-    .pipe(revCollect())
-    .pipe(gulp.dest('./dist'))
-})
+gulp.task('stylesmin', function() {
+    return gulp.src('./css/*.min.css') //源文件路径
+        //错误管理模块
+        .pipe(plumber())
+        .pipe(gulp.dest('dist/css')) //目的路径
+        //自动刷新浏览器
+        .pipe(browserSync.stream());
+});
 
+//js任务，将js压缩后放入dist。该任务要在clean-scripts任务完成后再执行
+gulp.task('js', function () {
+    //首先取得app/javascript下的所有后缀为.js的文件（**/的意思是包含所有子文件夹）
+    return gulp.src(['./js/*.js','!./js/*.min.js'])
+    //错误管理模块
+        .pipe(plumber())
+        //目前没用混淆，不方便调试
+        //.pipe(uglify())
+        //js压缩
+        .pipe(minify())
+        //输出到dist/javascript
+        .pipe(gulp.dest("dist/js"))
+        //自动刷新浏览器
+        .pipe(browserSync.stream());
+});
+gulp.task('jsmin', function () {
+    //首先取得app/javascript下的所有后缀为.js的文件（**/的意思是包含所有子文件夹）
+    return gulp.src('./js/*.min.js')
+    //错误管理模块
+        .pipe(plumber())
+        .pipe(gulp.dest("dist/js"))
+        //自动刷新浏览器
+        .pipe(browserSync.stream());
+});
 
-// html热加载
+//html任务，目前什么都没做。只是单纯的把所有html从开发环境app复制到测试环境dist
 gulp.task('html', function () {
-    return gulp.src('./*.html')
-    .pipe(gulp.dest('./dist'))
-    .pipe(connect.reload())
-})
+    return gulp.src("./*.html")
+        .pipe(plumber())
+        .pipe(gulp.dest("dist/"))
+        .pipe(browserSync.stream());
+});
 
-
-// 文件的清除
-gulp.task('clean',function(){
-    return gulp.src(['./dist','./.tmp'],{read:false})
-    .pipe(clean())
-})
-
-
-/*
- * 1. 通过设置.tmp 文件夹用于缓存项目压缩文件，放置md5签名的sourcemap文件，通过rev-collector在.tmp中缓存的manifest.json中对应的文件名关系来替换html中的静态资源引用目录
- * 2. manifest.json : 在使用gulp-rev进行静态资源的md5签名后，通过rev.manifest()生成了签名后资源与html中引用位置的对应关系（即从原index.min.js变为index-1812ef94a5.min.js的引用）
+// 处理图片
+/**
+* @param plugins {Array} 
+*   default: （不支持的文件将被忽略）
+*       [
+*           imagemin.gifsicle(),    压缩GIF
+*           imagemin.jpegtran(),    压缩JPEG
+*           imagemin.optipng(), 压缩PNG
+*           imagemin.svgo()     压缩SVG
+*       ]
+* 
+* @param options {Object}
+*   {
+*       optimizationLevel {Number} 取值范围：0-7（优化等级），默认：3
+*       progressive {Boolean} 无损压缩jpg图片，默认：false 
+*       interlaced {Boolean} 隔行扫描gif进行渲染，默认：false 
+*       multipass {Boolean} 多次优化svg直到完全优化，默认：false 
+*   }
 */
 
+//imagemin([plugins], [options])
+
+gulp.task('images', function () {
+    return gulp.src(['./img/*.*','./img/**/*.*'])
+    //错误处理模块
+        .pipe(plumber())
+        .pipe(cache(imagemin({
+            optimizationLevel: 5, // 取值范围：0-7（优化等级），默认：3  
+            progressive: true,  // 无损压缩jpg图片，默认：false 
+            interlaced: true,   // 隔行扫描gif进行渲染，默认：false 
+            multipass: true         // 多次优化svg直到完全优化，默认：false 
+        })))
+        .pipe(gulp.dest('dist/img'))
+        .pipe(browserSync.stream());
+});
+
+gulp.task('media', function () {
+    return gulp.src("./media/*")
+        .pipe(plumber())
+        .pipe(gulp.dest("dist/media"))
+        .pipe(browserSync.stream());
+});
 
 
 
-gulp.task('default', gulp.series(gulp.parallel('compress','js','css','rev','imagemin')), function () {
+//publish任务，需要的时候手动执行，将dist中的文件打包压缩放到release中。
+gulp.task('publish', function () {
+    //取得dist文件夹中的所有文件
+    return gulp.src('dist/*')
+        //错误处理模块
+        .pipe(plumber())
+        //压缩成名为publish.zip的文件
+        .pipe(zip('publish.zip'))
+        //放入release文件夹
+        .pipe(gulp.dest('release'))
+});
+
+
+//clean任务：清空dist文件夹，下边重建dist的时候使用
+gulp.task('clean', function () {
+    return gulp.src('dist/*', {read: false})
+        .pipe(clean());
+});
+
+
+
+
+
+
+//redist任务：需要时手动执行，重建dist文件夹：首先清空，然后重新处理所有文件
+gulp.task('redist', gulp.series(gulp.parallel( 'html',['js', 'images','styles'])), function () {
     console.log("----------gulp Finished----------");
 });
 
 
-
+//建立一个名为default的默认任务。当你在gitbash中执行gulp命令的时候，就会
+gulp.task('default', gulp.series(gulp.parallel('redist', 'serve')), function () {
+    console.log("----------gulp Finished----------");
+});
 
