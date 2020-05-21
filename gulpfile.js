@@ -64,7 +64,7 @@ gulp.task('styles', function() {
             browsers: ['last 2 versions'],
             cascade: false      // 是否美化
         })) //自动前缀
-        .pipe(base64()) //base64编码
+        //.pipe(base64()) //base64编码
         .pipe(cssmin()) //css压缩
         .pipe(gulp.dest('dist/css')) //目的路径
         //自动刷新浏览器
