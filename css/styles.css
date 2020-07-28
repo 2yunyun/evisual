@@ -1432,6 +1432,7 @@ blockquote cite, .blockquote cite {
     background-image:url('../img/banner1.jpg');
     background-repeat: no-repeat;
     background-size: cover;
+    background-position: left  120px;
 }
 
 .banner:after {
@@ -1545,8 +1546,8 @@ blockquote cite, .blockquote cite {
 
 @media only screen and (min-width:768px) {
     .header {
-        padding-top: 40px;
-        padding-bottom: 30px;
+        padding-top: 20px;
+        padding-bottom: 20px;
         background-color: #000;
         background-color: rgba(0, 0, 0, 0)
     }
@@ -1555,7 +1556,7 @@ blockquote cite, .blockquote cite {
 
 @media only screen and (min-width:980px) {
     .header {
-        padding-top: 70px
+        padding-top: 20px
     }
 
 }
@@ -1570,7 +1571,7 @@ blockquote cite, .blockquote cite {
 
 .logo {
     display: inline-block;
-    width: 150px;
+    width: 200px;
     background-color: transparent;
     display: inline-block;
     transition: all .2s;
@@ -1705,7 +1706,7 @@ blockquote cite, .blockquote cite {
     line-height: 1.5;
     font-weight: 700;
     display: block;
-    color: #fff;
+    color: #333;
     padding: 10px 0;
     text-decoration: none;
     position: relative
@@ -1715,7 +1716,7 @@ blockquote cite, .blockquote cite {
     .navigation-menu .navigation-item>a {
         font-size: 18px;
         line-height: 1.5;
-        color: #fff;
+        color: #333;
         padding: 10px 0;
         position: relative
     }
@@ -1740,7 +1741,7 @@ blockquote cite, .blockquote cite {
 
 @media only screen and (min-width:768px) {
     .navigation-menu .navigation-item>a:hover, .navigation-menu .navigation-item>a.active {
-        color: #fff
+        color: #333
     }
 
     .navigation-menu .navigation-item>a:hover:before, .navigation-menu .navigation-item>a.active:before {
